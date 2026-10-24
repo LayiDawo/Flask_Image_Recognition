@@ -4,26 +4,28 @@ from io import BytesIO
 import pytest
 
 def test_acceptance_successful_upload(client):
-    """
-    Test Case: Successful Upload of a Valid Image File
-    - Purpose: Ensure the application accepts a valid image file upload and provides a prediction.
-    - Method:
-        - Create a mock valid image file with minimal valid data.
-        - Simulate a POST request to the `/prediction` route with the file.
-        - Assert the response status code is 200.
-        - Verify that the response data includes the keyword 'Prediction.'
-    """
-    img_data = BytesIO(b"fake_image_data")  # Simulated valid image data
-    img_data.name = "test_image.jpg"
+    """Verify that a real hand-sign image produces a prediction."""
 
-    response = client.post(
-        "/prediction",
-        data={"file": (img_data, img_data.name)},
-        content_type="multipart/form-data"
+    from pathlib import Path
+
+    image_path = (
+        Path(__file__).parent
+        / "test_images"
+        / "4"
+        / "Sign 4 (92).jpeg"
     )
+
+    with image_path.open("rb") as image_file:
+        response = client.post(
+            "/prediction",
+            data={"file": (image_file, "sign_4.jpeg")},
+            content_type="multipart/form-data"
+        )
 
     assert response.status_code == 200
     assert b"Prediction" in response.data
+    assert b"File cannot be processed." not in response.data
+
 
 
 def test_acceptance_valid_large_image(client):

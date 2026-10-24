@@ -1,21 +1,25 @@
-# test_integration_happy.py
+"""Integration tests for successful image prediction."""
 
-from io import BytesIO
-import pytest
+from pathlib import Path
+
 
 def test_successful_prediction(client):
-    """Test the successful image upload and prediction."""
-    # Create a mock image file with minimal valid content
-    img_data = BytesIO(b"fake_image_data")
-    img_data.name = "test.jpg"
+    """Verify that a valid image produces a prediction through Flask."""
 
-    # Simulate a file upload to the correct prediction endpoint
-    response = client.post(
-        "/prediction",  # Correct route for prediction
-        data={"file": (img_data, img_data.name)},
-        content_type="multipart/form-data"
+    image_path = (
+        Path(__file__).parent
+        / "test_images"
+        / "4"
+        / "Sign 4 (92).jpeg"
     )
 
-    # Assertions
+    with image_path.open("rb") as image_file:
+        response = client.post(
+            "/prediction",
+            data={"file": (image_file, "sign_4.jpeg")},
+            content_type="multipart/form-data"
+        )
+
     assert response.status_code == 200
-    assert b"Prediction" in response.data  # Modify this check based on your output
+    assert b"Prediction" in response.data
+    assert b"File cannot be processed." not in response.data
