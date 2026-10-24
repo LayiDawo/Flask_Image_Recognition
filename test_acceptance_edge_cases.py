@@ -56,23 +56,28 @@ def test_edge_case_invalid_metadata(client):
     assert b"Prediction" in response.data  # Adjust based on actual behavior
 
 # 3. Edge Case: Uploading an Image with Non-Standard File Extensions
+
 def test_edge_case_non_standard_image_extensions(client):
-    """
-    Test uploading images with non-standard file extensions.
-    - Scenario: Upload a file with an uncommon extension, e.g., .webp.
-    - Expected Behavior: System processes the file as a valid image.
-    """
-    img_data = BytesIO(b"valid_image_data")
-    img_data.name = "non_standard_image.webp"  # Non-standard extension
+    """Verify that a valid WebP image can be uploaded and processed."""
+    from io import BytesIO
+    from unittest.mock import patch
+    from PIL import Image
 
-    response = client.post(
-        "/prediction",
-        data={"file": (img_data, img_data.name)},
-        content_type="multipart/form-data"
-    )
+    image = Image.new("RGB", (224, 224), color="white")
+    image_bytes = BytesIO()
+    image.save(image_bytes, format="WEBP")
+    image_bytes.seek(0)
 
-    # Ensure the system processes the file despite the non-standard extension
-    assert b"Prediction" in response.data  # Adjust based on actual prediction content
+    with patch("app.predict_result", return_value=4):
+        response = client.post(
+            "/prediction",
+            data={"file": (image_bytes, "test_image.webp")},
+            content_type="multipart/form-data"
+        )
+
+    assert response.status_code == 200
+    assert b">4</h2>" in response.data
+    assert b"File cannot be processed." not in response.data
 
 # 4. Edge Case: Uploading a Sequence of Images for Multi-Step Processing
 def test_edge_case_sequential_image_uploads(client):
@@ -127,21 +132,18 @@ def test_edge_case_unexpected_headers(client):
     assert b"Prediction" in response.data
 
 # 6. Edge Case: Uploading an Image with HTTP/2
-def test_edge_case_upload_over_http2(client):
-    """
-    Test uploading an image using HTTP/2 protocol.
-    - Scenario: Simulate uploading an image over HTTP/2 protocol.
-    - Expected Behavior: System processes the upload as it would over HTTP/1.1.
-    """
-    img_data = BytesIO(b"valid_image_data")
-    img_data.name = "http2_image.jpg"
 
-    # Simulate uploading the image using HTTP/2 (client would need to support it)
+def test_edge_case_text_file_upload(client):
+    """Verify that uploading a text file returns an error message."""
+    from io import BytesIO
+
+    text_file = BytesIO(b"This is a text file, not an image.")
+
     response = client.post(
         "/prediction",
-        data={"file": (img_data, img_data.name)},
+        data={"file": (text_file, "notes.txt")},
         content_type="multipart/form-data"
     )
 
-    # Ensure that the image upload works successfully over HTTP/2
-    assert b"Prediction" in response.data
+    assert response.status_code == 200
+    assert b"File cannot be processed." in response.data
